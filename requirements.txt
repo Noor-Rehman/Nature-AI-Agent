@@ -1,2 +1,2 @@
-playwright
+gradio_client
 requests
