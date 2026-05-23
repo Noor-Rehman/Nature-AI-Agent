@@ -32,7 +32,7 @@ def main():
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
 
     # CPU-friendly mode (GitHub Actions compatible)
-    pipe.enable_model_cpu_offload()
+    pipe.to("cpu")
 
     print("🎬 Generating video... (this may take a few minutes)")
 
