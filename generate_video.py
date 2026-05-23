@@ -2,21 +2,14 @@ import os
 import time
 import requests
 import random
-
-# --- LEGACY FIX FOR MOVIEPY ---
-import PIL.Image
-if not hasattr(PIL.Image, 'ANTIALIAS'):
-    PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
-# ------------------------------
-
-from moviepy.editor import ImageClip
+from gradio_client import Client
 
 def get_ai_prompt():
     themes = [
-        "First-person drone POV flying fast over a cinematic desert with massive sand dunes, golden hour, 8k, hyper-realistic",
-        "Immersive first-person view walking through a 1700s European cobblestone town at dawn, misty atmosphere, flickering lanterns",
-        "Cinematic 9:16 view of a cozy wooden cabin in a dark pine forest, heavy rain hitting windows, lightning, volumetric lighting",
-        "POV swimming through a vibrant tropical coral reef, sun rays piercing blue water, cinematic 4k"
+        "First-person drone POV flying fast through massive desert sand dunes at sunset, sand blowing in the wind, 4k, cinematic motion",
+        "Cinematic view of a cozy cabin in a dark forest, heavy rain pouring down, lightning flashing in the sky, trees swaying, hyper-realistic",
+        "Underwater POV swimming through a coral reef, fish moving, sun rays shimmering through moving water, 4k cinematic",
+        "Walking through a misty 1700s European town, fog rolling in, lanterns flickering, people shadows moving in the distance"
     ]
     api_key = os.getenv("OPENROUTER_API_KEY")
     theme = random.choice(themes)
@@ -24,7 +17,7 @@ def get_ai_prompt():
         headers = {"Authorization": f"Bearer {api_key}", "HTTP-Referer": "https://github.com/"}
         data = {
             "model": "meta-llama/llama-3-8b-instruct:free",
-            "messages": [{"role": "user", "content": f"Enhance this for an eye-catchy 1-sentence 9:16 AI video: {theme}"}]
+            "messages": [{"role": "user", "content": f"Create a short 1-sentence prompt for a 9:16 moving AI video. Describe the motion (rain falling, flying, etc): {theme}"}]
         }
         res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data, timeout=15)
         return res.json()['choices'][0]['message']['content']
@@ -32,61 +25,35 @@ def get_ai_prompt():
 
 def run_automation():
     prompt = get_ai_prompt()
-    print(f"🚀 Mind-Blowing Prompt: {prompt}")
+    token = os.getenv("HF_TOKEN")
+    print(f"🚀 Prompting for REAL Motion: {prompt}")
     
-    video_filename = f"nature_ai_{int(time.time())}.mp4"
-    image_filename = "temp_visual.jpg"
+    video_filename = f"nature_motion_{int(time.time())}.mp4"
 
     try:
-        # 1. Generate High-End AI Visual (Flux Model)
-        print("🎨 Generating AI Visual...")
-        encoded_prompt = requests.utils.quote(prompt)
-        # We fetch a slightly larger image so we have "room" to zoom in without losing quality
-        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=1422&model=flux&nologo=true"
+        # We use a professional Text-to-Video space
+        print("🤖 Connecting to AI Video Engine (AnimateDiff-Lightning)...")
+        # Use your HF_TOKEN to bypass public queues
+        client = Client("ByteDance/AnimateDiff-Lightning", hf_token=token)
         
-        response = requests.get(url, timeout=30)
-        with open(image_filename, 'wb') as f:
-            f.write(response.content)
-
-        # 2. Transform Image into Cinematic 9:16 Video
-        print("🎬 Creating Cinematic Motion Video...")
-        duration = 5 
-        
-        # Load clip and force it to be an even size immediately
-        clip = ImageClip(image_filename).set_duration(duration)
-        
-        # PROFESSIONAL ZOOM FIX: 
-        # Instead of resizing the frame (which causes the lines), 
-        # we resize the original image once and then "pan" or use a stable resize
-        base_w, base_h = 720, 1280
-        clip = clip.resize(width=base_w) # Ensure width is 720
-        
-        # Apply zoom by resizing and then cropping to the exact center
-        # This keeps the pixel grid perfectly aligned
-        def zoom(t):
-            return 1 + 0.04 * (t / duration)
-            
-        # We use a trick: resize then crop to ensure dimensions are always 720x1280
-        clip = clip.resize(zoom).on_color(size=(base_w, base_h), color=(0,0,0), pos='center')
-        
-        print("💾 Final Encoding with Rounding Fix...")
-        clip.write_videofile(
-            video_filename, 
-            fps=24, 
-            codec='libx264', 
-            audio=False, 
-            # This is the "Magic Bullet" parameter that forces the video to stay 720x1280
-            ffmpeg_params=['-vf', 'scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2', '-pix_fmt', 'yuv420p']
+        # Trigger real video generation (actual motion frames)
+        result = client.predict(
+            prompt=prompt,
+            api_name="/generate_video"
         )
         
-        print(f"✅ Video created successfully: {video_filename}")
+        # Result is the path to the real .mp4 file
+        import shutil
+        shutil.copy(result, video_filename)
+        
+        print(f"✅ REAL MOTION VIDEO CREATED: {video_filename}")
         with open("daily_log.md", "a") as f:
-            f.write(f"\n- {time.ctime()}: ✅ SUCCESS. Created {video_filename}")
+            f.write(f"\n- {time.ctime()}: ✅ SUCCESS. Created real motion video: {video_filename}")
 
     except Exception as e:
         print(f"❌ Error: {e}")
         with open("daily_log.md", "a") as f:
-            f.write(f"\n- {time.ctime()}: ❌ Error: {str(e)}")
+            f.write(f"\n- {time.ctime()}: ❌ Motion Engine Busy. Error: {str(e)}")
 
 if __name__ == "__main__":
     run_automation()
