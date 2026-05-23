@@ -41,7 +41,8 @@ def run_automation():
         # 1. Generate High-End AI Visual (Flux Model)
         print("🎨 Generating AI Visual...")
         encoded_prompt = requests.utils.quote(prompt)
-        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&model=flux&nologo=true"
+        # Use 720x1280 for better compatibility and faster rendering
+        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&model=flux&nologo=true"
         
         response = requests.get(url, timeout=30)
         with open(image_filename, 'wb') as f:
@@ -49,25 +50,33 @@ def run_automation():
 
         # 2. Transform Image into Cinematic 9:16 Video
         print("🎬 Creating Cinematic Motion Video...")
-        # Duration: 5 seconds
-        clip = ImageClip(image_filename).set_duration(5)
+        duration = 5 
         
-        # Apply a slow zoom-in effect (Drone style)
-        # Using a safer scaling method for MoviePy 1.0.3
-        clip = clip.resize(lambda t: 1 + 0.03 * t)
+        # Load clip
+        clip = ImageClip(image_filename).set_duration(duration)
         
-        # Set video parameters and export
-        clip.fps = 24
-        clip.write_videofile(video_filename, codec='libx264', audio=False, threads=4)
+        # Apply the zoom effect carefully
+        # We use a slightly smaller increment to keep the image sharp
+        clip = clip.resize(lambda t: 1 + 0.02 * t)
         
-        print(f"✅ Video created: {video_filename}")
+        # FIX: Explicitly set the pixel format to yuv420p to remove the "static" lines
+        print("💾 Encoding video with YUV420P format...")
+        clip.write_videofile(
+            video_filename, 
+            fps=24, 
+            codec='libx264', 
+            audio=False, 
+            ffmpeg_params=['-pix_fmt', 'yuv420p']
+        )
+        
+        print(f"✅ Video created successfully: {video_filename}")
         with open("daily_log.md", "a") as f:
-            f.write(f"\n- {time.ctime()}: SUCCESS. Created {video_filename}")
+            f.write(f"\n- {time.ctime()}: ✅ SUCCESS. Created {video_filename}")
 
     except Exception as e:
         print(f"❌ Error: {e}")
         with open("daily_log.md", "a") as f:
-            f.write(f"\n- {time.ctime()}: Error: {str(e)}")
+            f.write(f"\n- {time.ctime()}: ❌ Error: {str(e)}")
 
 if __name__ == "__main__":
     run_automation()
