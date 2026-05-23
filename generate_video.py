@@ -3,17 +3,17 @@ import time
 import requests
 import random
 from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_page
+from playwright_stealth import stealth
 
 # 1. Get a Mind-Blowing Prompt from OpenRouter
 def get_ai_prompt():
     api_key = os.getenv("OPENROUTER_API_KEY")
     themes = [
-        "First-person drone POV flying through a massive desert with giant sand dunes at sunset, golden hour, 4k, hyper-realistic",
-        "Cinematic view of a cozy cabin in a dark pine forest during a heavy rainstorm, lightning illuminating the sky, 4k",
-        "Underwater POV swimming through a vibrant coral reef with sun rays piercing the crystal clear water, tropical sea, ultra-detailed",
-        "A hyper-realistic 1700s European old town street during a misty morning, cobblestones, lanterns flickering, immersive",
-        "A futuristic peaceful mountain temple surrounded by floating cherry blossoms and waterfalls, spiritual and majestic"
+        "First-person drone POV flying through a massive desert with giant sand dunes at sunset, golden hour, 4k, hyper-realistic, sand particles flying",
+        "Cinematic view of a cozy cabin in a dark pine forest during a heavy rainstorm, lightning illuminating the sky, 4k, hyper-detailed textures",
+        "Underwater POV swimming through a vibrant coral reef with sun rays piercing the crystal clear water, tropical sea, cinematic lighting",
+        "A hyper-realistic 1700s European old town street during a misty morning, cobblestones, lanterns flickering, cinematic atmosphere",
+        "A futuristic peaceful mountain temple surrounded by floating cherry blossoms and waterfalls, spiritual and majestic, 8k resolution"
     ]
     
     prompt_theme = random.choice(themes)
@@ -22,14 +22,15 @@ def get_ai_prompt():
     data = {
         "model": "meta-llama/llama-3-8b-instruct:free",
         "messages": [
-            {"role": "system", "content": "You are a world-class AI Video prompt engineer. Create a short, high-impact, visual prompt for AI video generation."},
-            {"role": "user", "content": f"Enhance this theme into a mind-blowing, eye-catchy 1-sentence prompt for a 9:16 vertical video: {prompt_theme}"}
+            {"role": "system", "content": "You are a world-class AI Video prompt engineer. Your prompts are vivid, cinematic, and use technical photography terms."},
+            {"role": "user", "content": f"Transform this theme into a mind-blowing, eye-catchy 1-sentence prompt for a 9:16 vertical video. Use words like 'octane render', 'volumetric lighting', and 'unreal engine 5' to ensure the result is insane: {prompt_theme}"}
         ]
     }
     
     try:
         response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
-        return response.json()['choices'][0]['message']['content']
+        res_json = response.json()
+        return res_json['choices'][0]['message']['content']
     except Exception as e:
         print(f"AI API Error: {e}")
         return prompt_theme 
@@ -40,7 +41,6 @@ def run_automation():
     print(f"🚀 Today's Mind-Blowing Prompt: {prompt}")
 
     with sync_playwright() as p:
-        # Launch browser with a specific User Agent to look more human
         browser = p.chromium.launch(headless=True) 
         context = browser.new_context(
             viewport={'width': 1280, 'height': 720},
@@ -60,26 +60,27 @@ def run_automation():
         }])
 
         page = context.new_page()
-        stealth_page(page) # CORRECTED FUNCTION NAME
+        # Corrected import usage
+        stealth(page) 
 
         print("🌐 Opening Leonardo.ai...")
         page.goto("https://app.leonardo.ai/ai-generations", wait_until="networkidle")
-        time.sleep(10) # Give it extra time to load
+        time.sleep(10) 
 
         # Input Prompt
         try:
             print("✍️ Entering Prompt...")
-            # Try to find the prompt box - Leonardo's UI can be tricky
-            page.get_by_placeholder("Type a prompt...").fill(prompt)
+            # Using a more generic selector to find the prompt textarea
+            page.locator("textarea").first.fill(prompt)
             time.sleep(2)
             
-            # Click Generate (pressing Enter is safer)
+            # Click Generate
             print("🎬 Clicking Generate...")
             page.keyboard.press("Enter")
             
-            # Success Logging
+            # Log success
             with open("daily_log.md", "a") as f:
-                f.write(f"\n- **Date:** {time.ctime()} | **Status:** Triggered Generation | **Prompt:** {prompt}")
+                f.write(f"\n- **Date:** {time.ctime()} | **Status:** Triggered | **Prompt:** {prompt}")
                 
         except Exception as e:
             print(f"❌ Error during generation: {e}")
