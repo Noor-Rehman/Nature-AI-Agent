@@ -38,9 +38,9 @@ def main():
 
     result = pipe(
         prompt=prompt,
-        num_frames=16,
+        num_frames=4,
         guidance_scale=7.5,
-        num_inference_steps=25
+        num_inference_steps=5
     )
 
     output_file = "output.mp4"
