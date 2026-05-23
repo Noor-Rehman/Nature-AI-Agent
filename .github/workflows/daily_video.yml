@@ -21,18 +21,14 @@ jobs:
           python-version: '3.9'
 
       - name: Install Dependencies
-        run: |
-          pip install playwright requests
-          playwright install chromium
-          playwright install-deps
+        run: pip install gradio_client requests
 
-      - name: Run Video Creator
+      - name: Run AI Agent
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          LEONARDO_COOKIE: ${{ secrets.LEONARDO_COOKIE }} 
         run: python generate_video.py
 
-      - name: Commit and Push Video
+      - name: Push to GitHub
         run: |
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
