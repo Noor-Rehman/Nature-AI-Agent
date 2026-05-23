@@ -20,8 +20,11 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install Dependencies
-        run: pip install gradio_client requests
+      - name: Install Dependencies and FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          pip install requests moviepy numpy
 
       - name: Run AI Agent
         env:
@@ -33,5 +36,5 @@ jobs:
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
           git add .
-          git commit -m "Daily AI Video Generated [$(date)]" || exit 0
+          git commit -m "Daily AI Video [$(date)]" || exit 0
           git push
