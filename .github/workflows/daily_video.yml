@@ -24,7 +24,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          pip install requests moviepy numpy
+          pip install --upgrade pip
+          # THIS IS THE FIX: Use the requirements file
+          pip install -r requirements.txt
 
       - name: Run AI Agent
         env:
