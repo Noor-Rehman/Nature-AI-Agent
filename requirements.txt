@@ -1,2 +1,10 @@
-requests
-gradio_client
+torch
+torchvision
+diffusers
+transformers
+accelerate
+safetensors
+imageio
+imageio-ffmpeg
+scipy
+ftfy
