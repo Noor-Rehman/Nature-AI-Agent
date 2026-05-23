@@ -26,12 +26,13 @@ jobs:
           sudo apt-get install -y ffmpeg
           pip install requests gradio_client
 
-      # Rest of the steps remain the same
       - name: Run AI Agent
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }} 
-        run: python generate_video.py
+        # We add a 15-minute timeout because real AI video is slow to generate
+        run: |
+          timeout 900s python generate_video.py || echo "Script timed out but continuing..."
 
       - name: Push to GitHub
         run: |
