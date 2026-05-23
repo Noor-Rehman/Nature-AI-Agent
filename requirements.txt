@@ -1,2 +1,4 @@
 gradio_client
 requests
+moviepy
+numpy
