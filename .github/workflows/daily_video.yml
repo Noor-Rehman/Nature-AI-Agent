@@ -2,8 +2,8 @@ name: Daily AI Video Agent
 
 on:
   schedule:
-    - cron: '0 9 * * *'
-  workflow_dispatch:
+    - cron: '0 9 * * *'  # Runs daily at 9:00 AM UTC
+  workflow_dispatch:      # Allows you to run it manually
 
 permissions:
   contents: write
@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Required for rebase
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -24,20 +26,20 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          pip install requests gradio_client
+          pip install requests gradio_client --upgrade
 
       - name: Run AI Agent
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }} 
-        # We add a 15-minute timeout because real AI video is slow to generate
-        run: |
-          timeout 900s python generate_video.py || echo "Script timed out but continuing..."
+        run: python generate_video.py
 
-      - name: Push to GitHub
+      - name: Commit and Push
         run: |
           git config --global user.name "GitHub Action Bot"
           git config --global user.email "actions@github.com"
           git add .
+          # This forces the bot to merge any remote changes before pushing
+          git pull --rebase origin main
           git commit -m "Daily AI Video [$(date)]" || exit 0
-          git push
+          git push origin main
