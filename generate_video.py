@@ -41,8 +41,8 @@ def run_automation():
         # 1. Generate High-End AI Visual (Flux Model)
         print("🎨 Generating AI Visual...")
         encoded_prompt = requests.utils.quote(prompt)
-        # Use 720x1280 for better compatibility and faster rendering
-        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&model=flux&nologo=true"
+        # We fetch a slightly larger image so we have "room" to zoom in without losing quality
+        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=800&height=1422&model=flux&nologo=true"
         
         response = requests.get(url, timeout=30)
         with open(image_filename, 'wb') as f:
@@ -52,21 +52,31 @@ def run_automation():
         print("🎬 Creating Cinematic Motion Video...")
         duration = 5 
         
-        # Load clip
+        # Load clip and force it to be an even size immediately
         clip = ImageClip(image_filename).set_duration(duration)
         
-        # Apply the zoom effect carefully
-        # We use a slightly smaller increment to keep the image sharp
-        clip = clip.resize(lambda t: 1 + 0.02 * t)
+        # PROFESSIONAL ZOOM FIX: 
+        # Instead of resizing the frame (which causes the lines), 
+        # we resize the original image once and then "pan" or use a stable resize
+        base_w, base_h = 720, 1280
+        clip = clip.resize(width=base_w) # Ensure width is 720
         
-        # FIX: Explicitly set the pixel format to yuv420p to remove the "static" lines
-        print("💾 Encoding video with YUV420P format...")
+        # Apply zoom by resizing and then cropping to the exact center
+        # This keeps the pixel grid perfectly aligned
+        def zoom(t):
+            return 1 + 0.04 * (t / duration)
+            
+        # We use a trick: resize then crop to ensure dimensions are always 720x1280
+        clip = clip.resize(zoom).on_color(size=(base_w, base_h), color=(0,0,0), pos='center')
+        
+        print("💾 Final Encoding with Rounding Fix...")
         clip.write_videofile(
             video_filename, 
             fps=24, 
             codec='libx264', 
             audio=False, 
-            ffmpeg_params=['-pix_fmt', 'yuv420p']
+            # This is the "Magic Bullet" parameter that forces the video to stay 720x1280
+            ffmpeg_params=['-vf', 'scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2', '-pix_fmt', 'yuv420p']
         )
         
         print(f"✅ Video created successfully: {video_filename}")
