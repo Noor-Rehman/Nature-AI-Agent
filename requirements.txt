@@ -1,8 +1,2 @@
 requests
-moviepy==1.0.3
-numpy==1.24.3
-Pillow==9.5.0
-decorator==4.4.2
-proglog==0.1.10
-imageio==2.25.1
-imageio-ffmpeg==0.4.8
+gradio_client
