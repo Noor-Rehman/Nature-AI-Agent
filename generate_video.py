@@ -2,6 +2,13 @@ import os
 import time
 import requests
 import random
+
+# --- LEGACY FIX FOR MOVIEPY ---
+import PIL.Image
+if not hasattr(PIL.Image, 'ANTIALIAS'):
+    PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
+# ------------------------------
+
 from moviepy.editor import ImageClip
 
 def get_ai_prompt():
@@ -46,11 +53,12 @@ def run_automation():
         clip = ImageClip(image_filename).set_duration(5)
         
         # Apply a slow zoom-in effect (Drone style)
+        # Using a safer scaling method for MoviePy 1.0.3
         clip = clip.resize(lambda t: 1 + 0.03 * t)
         
         # Set video parameters and export
         clip.fps = 24
-        clip.write_videofile(video_filename, codec='libx264', audio=False)
+        clip.write_videofile(video_filename, codec='libx264', audio=False, threads=4)
         
         print(f"✅ Video created: {video_filename}")
         with open("daily_log.md", "a") as f:
