@@ -6,40 +6,33 @@ from playwright.sync_api import sync_playwright
 
 def get_ai_prompt():
     themes = [
-        "First-person drone POV flying through a massive desert with sand dunes at sunset, golden hour, 8k, unreal engine 5, volumetric lighting",
-        "Cinematic view of a cozy cabin in a dark forest during a heavy rainstorm, lightning, hyper-realistic, octane render",
-        "Underwater POV swimming through a vibrant coral reef, sun rays piercing the water, 8k, cinematic atmosphere",
-        "Hyper-realistic 1700s European old town street, misty morning, lanterns flickering, cinematic atmosphere",
-        "Futuristic mountain temple, floating cherry blossoms, waterfalls, majestic, 8k resolution"
+        "First-person drone POV flying through a massive desert with giant sand dunes at sunset, golden hour, 8k, unreal engine 5 style",
+        "Cinematic view of a cozy cabin in a dark pine forest during a heavy rainstorm, lightning, hyper-realistic, volumetric lighting",
+        "Underwater POV swimming through a vibrant coral reef, sun rays piercing the water, 8k resolution, cinematic",
+        "A hyper-realistic 1700s European old town street during a misty morning, lanterns flickering, octane render",
+        "A futuristic peaceful mountain temple surrounded by floating cherry blossoms and waterfalls, 8k resolution"
     ]
     api_key = os.getenv("OPENROUTER_API_KEY")
-    prompt_theme = random.choice(themes)
-    
+    theme = random.choice(themes)
     try:
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "HTTP-Referer": "https://github.com/", # Required by OpenRouter
-            "X-Title": "Nature AI Agent"
-        }
+        headers = {"Authorization": f"Bearer {api_key}", "HTTP-Referer": "https://github.com/"}
         data = {
             "model": "meta-llama/llama-3-8b-instruct:free",
-            "messages": [{"role": "user", "content": f"Enhance this into a 1-sentence mind-blowing AI video prompt: {prompt_theme}"}]
+            "messages": [{"role": "user", "content": f"Enhance this for a 9:16 eye-catchy AI video prompt: {theme}"}]
         }
-        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data, timeout=15)
-        return response.json()['choices'][0]['message']['content']
-    except:
-        return prompt_theme 
+        res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data, timeout=15)
+        return res.json()['choices'][0]['message']['content']
+    except: return theme
 
 def run_automation():
     prompt = get_ai_prompt()
     print(f"🚀 Prompt: {prompt}")
 
     with sync_playwright() as p:
-        # We launch with a larger window so the UI doesn't hide elements
-        browser = p.chromium.launch(headless=True) 
-        context = browser.new_context(viewport={'width': 1920, 'height': 1080})
+        browser = p.chromium.launch(headless=True)
+        # Use a very common screen size
+        context = browser.new_context(viewport={'width': 1280, 'height': 720})
         
-        # Add Cookie
         cookie_value = os.getenv("LEONARDO_COOKIE")
         context.add_cookies([{
             'name': '__Secure-better-auth.session_token',
@@ -52,43 +45,39 @@ def run_automation():
         }])
 
         page = context.new_page()
-        print("🌐 Navigating to Leonardo...")
         
-        # Go directly to the generation page
-        page.goto("https://app.leonardo.ai/ai-generations", wait_until="networkidle", timeout=90000)
-        
-        # Wait for the prompt area to definitely exist
-        print("⏳ Waiting for UI to settle...")
-        page.wait_for_selector("textarea", timeout=60000)
-        time.sleep(10)
-
         try:
-            # 1. Clear and Fill Prompt
-            print("✍️ Typing Prompt...")
-            textarea = page.locator("textarea").first
-            textarea.click()
-            # We type slowly to simulate a human and trigger the 'Generate' button state
-            page.keyboard.type(prompt, delay=50)
-            time.sleep(2)
+            print("🌐 Navigating to Leonardo AI Generations...")
+            # We use a longer timeout for the page load
+            page.goto("https://app.leonardo.ai/ai-generations", wait_until="domcontentloaded", timeout=100000)
+            
+            print("⏳ Waiting 40 seconds for heavy UI to load...")
+            time.sleep(40) 
 
-            # 2. Trigger Generation
-            print("🎬 Clicking Generate...")
-            # We try pressing Enter first
+            # Take a screenshot to see if we are logged in or stuck at login
+            page.screenshot(path="debug_view.png")
+            print("📸 Debug screenshot saved as debug_view.png")
+
+            print("✍️ Attempting to fill prompt...")
+            # Try to find the prompt box by its most common attribute
+            prompt_box = page.locator("textarea").first
+            prompt_box.wait_for(state="visible", timeout=60000)
+            prompt_box.click()
+            page.keyboard.type(prompt, delay=100)
+            
+            print("🎬 Sending Enter command...")
             page.keyboard.press("Enter")
-            
-            # Wait a bit to see if it starts
             time.sleep(10)
-            print("✅ Generation Triggered Successfully!")
             
-            # 3. Log the success
             with open("daily_log.md", "a") as f:
-                f.write(f"\n- {time.ctime()}: ✅ SUCCESS. Prompt: {prompt}")
+                f.write(f"\n- {time.ctime()}: ✅ Video triggered for: {prompt}")
+            print("✅ Success!")
 
         except Exception as e:
             print(f"❌ Error: {e}")
+            page.screenshot(path="error_state.png")
             with open("daily_log.md", "a") as f:
-                f.write(f"\n- {time.ctime()}: ❌ FAILED. Error: {str(e)}")
-            raise e # Force the GitHub Action to show an error if it fails
+                f.write(f"\n- {time.ctime()}: ❌ Failed. See error_state.png. Error: {str(e)}")
 
         browser.close()
 
