@@ -3,7 +3,7 @@ import time
 import requests
 import random
 from playwright.sync_api import sync_playwright
-from playwright_stealth import stealth_sync
+from playwright_stealth import stealth_page
 
 # 1. Get a Mind-Blowing Prompt from OpenRouter
 def get_ai_prompt():
@@ -23,15 +23,16 @@ def get_ai_prompt():
         "model": "meta-llama/llama-3-8b-instruct:free",
         "messages": [
             {"role": "system", "content": "You are a world-class AI Video prompt engineer. Create a short, high-impact, visual prompt for AI video generation."},
-            {"role": "user", "content": f"Enhance this theme into a mind-blowing, eye-catchy 1-sentence prompt for a 9:16 video: {prompt_theme}"}
+            {"role": "user", "content": f"Enhance this theme into a mind-blowing, eye-catchy 1-sentence prompt for a 9:16 vertical video: {prompt_theme}"}
         ]
     }
     
     try:
         response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
         return response.json()['choices'][0]['message']['content']
-    except:
-        return prompt_theme # Fallback to manual theme if API fails
+    except Exception as e:
+        print(f"AI API Error: {e}")
+        return prompt_theme 
 
 # 2. Automation Logic
 def run_automation():
@@ -39,8 +40,12 @@ def run_automation():
     print(f"🚀 Today's Mind-Blowing Prompt: {prompt}")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True) # Run invisibly in GitHub Actions
-        context = browser.new_context(viewport={'width': 1280, 'height': 720})
+        # Launch browser with a specific User Agent to look more human
+        browser = p.chromium.launch(headless=True) 
+        context = browser.new_context(
+            viewport={'width': 1280, 'height': 720},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+        )
         
         # Inject Leonardo Cookie
         cookie_value = os.getenv("LEONARDO_COOKIE")
@@ -55,42 +60,33 @@ def run_automation():
         }])
 
         page = context.new_page()
-        stealth_sync(page) # Make it look like a real human
+        stealth_page(page) # CORRECTED FUNCTION NAME
 
         print("🌐 Opening Leonardo.ai...")
         page.goto("https://app.leonardo.ai/ai-generations", wait_until="networkidle")
-        time.sleep(5)
-
-        # Handle 9:16 Aspect Ratio
-        try:
-            print("📐 Setting Aspect Ratio to 9:16...")
-            # This clicks the aspect ratio dropdown/button - paths may change slightly based on UI updates
-            page.click("text=9:16") 
-        except:
-            print("⚠️ Could not find 9:16 button, using default.")
+        time.sleep(10) # Give it extra time to load
 
         # Input Prompt
-        print("✍️ Entering Prompt...")
-        page.fill("textarea", prompt) # Leonardo usually uses a textarea for prompts
-        
-        # Enable Video/Motion if available
         try:
-            page.click("button:has-text('Motion')")
-        except:
-            pass
+            print("✍️ Entering Prompt...")
+            # Try to find the prompt box - Leonardo's UI can be tricky
+            page.get_by_placeholder("Type a prompt...").fill(prompt)
+            time.sleep(2)
+            
+            # Click Generate (pressing Enter is safer)
+            print("🎬 Clicking Generate...")
+            page.keyboard.press("Enter")
+            
+            # Success Logging
+            with open("daily_log.md", "a") as f:
+                f.write(f"\n- **Date:** {time.ctime()} | **Status:** Triggered Generation | **Prompt:** {prompt}")
+                
+        except Exception as e:
+            print(f"❌ Error during generation: {e}")
+            with open("daily_log.md", "a") as f:
+                f.write(f"\n- **Date:** {time.ctime()} | **Status:** Error: {str(e)}")
 
-        # Generate
-        print("🎬 Generating Video...")
-        page.keyboard.press("Enter")
-        
-        # Wait for generation (AI video takes time)
-        print("⏳ Waiting 3 minutes for AI to work its magic...")
-        time.sleep(180) 
-
-        # Log completion
-        with open("daily_log.md", "a") as f:
-            f.write(f"\n- **Date:** {time.ctime()} | **Prompt:** {prompt} | Status: Success")
-
+        print("✅ Script finished.")
         browser.close()
 
 if __name__ == "__main__":
