@@ -2,3 +2,4 @@ requests
 Pillow
 imageio
 numpy
+imageio-ffmpeg
