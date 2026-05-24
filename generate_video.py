@@ -1,52 +1,61 @@
 import os
+import requests
+from PIL import Image
+import imageio
+import numpy as np
 import random
-import torch
-from diffusers import AnimateDiffPipeline, MotionAdapter, EulerDiscreteScheduler
-from diffusers.utils import export_to_video
+import time
 
 def get_prompt():
-    themes = [
-        "cinematic underwater coral reef, fish swimming, sun rays, ultra realistic, 4k motion",
-        "drone flying over desert dunes at sunset, cinematic camera movement",
-        "foggy medieval street with lantern lights, slow cinematic motion",
-        "rainy forest cabin, lightning flashes, dramatic lighting, ultra realistic"
-    ]
-    return random.choice(themes)
+    return random.choice([
+        "underwater coral reef cinematic lighting, fish swimming",
+        "foggy medieval street lanterns glowing at night",
+        "rainy forest cabin with lightning storm",
+        "desert sunset cinematic drone shot, golden light"
+    ])
+
+def generate_image(prompt):
+    print("🎨 Generating base image...")
+
+    url = f"https://image.pollinations.ai/prompt/{prompt}"
+    response = requests.get(url, timeout=60)
+
+    with open("base.jpg", "wb") as f:
+        f.write(response.content)
+
+    return Image.open("base.jpg")
+
+def create_motion_frames(image, frames=20):
+    print("🎬 Creating motion frames...")
+
+    images = []
+    w, h = image.size
+
+    for i in range(frames):
+        scale = 1 + (i * 0.015)  # smooth zoom
+        new_w, new_h = int(w * scale), int(h * scale)
+
+        img = image.resize((new_w, new_h))
+        img = img.crop((0, 0, w, h))
+
+        images.append(np.array(img))
+
+    return images
+
+def create_video(frames):
+    print("🎥 Building video...")
+    imageio.mimsave("output.mp4", frames, fps=10)
 
 def main():
     prompt = get_prompt()
     print("🚀 Prompt:", prompt)
 
-    model_id = "guoyww/animatediff-motion-adapter-v1-5-2"
+    img = generate_image(prompt)
+    frames = create_motion_frames(img)
 
-    # Load motion adapter
-    adapter = MotionAdapter.from_pretrained(model_id, torch_dtype=torch.float32)
+    create_video(frames)
 
-    # Base SD model
-    pipe = AnimateDiffPipeline.from_pretrained(
-        "runwayml/stable-diffusion-v1-5",
-        motion_adapter=adapter,
-        torch_dtype=torch.float32
-    )
-
-    pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
-
-    # CPU-friendly mode (GitHub Actions compatible)
-    pipe.to("cpu")
-
-    print("🎬 Generating video... (this may take a few minutes)")
-
-    result = pipe(
-        prompt=prompt,
-        num_frames=4,
-        guidance_scale=7.5,
-        num_inference_steps=5
-    )
-
-    output_file = "output.mp4"
-    export_to_video(result.frames[0], output_file)
-
-    print(f"✅ Video saved: {output_file}")
+    print("✅ Video created: output.mp4")
 
 if __name__ == "__main__":
     main()
