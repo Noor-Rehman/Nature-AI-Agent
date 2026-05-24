@@ -1,10 +1,4 @@
-torch
-torchvision
-diffusers
-transformers
-accelerate
-safetensors
+requests
+Pillow
 imageio
-imageio-ffmpeg
-scipy
-ftfy
+numpy
