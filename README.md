@@ -1,1 +1,1 @@
-# Nature Videos Generator
+# Nature AI Videos Generator
